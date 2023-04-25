@@ -29,21 +29,14 @@ let server = null;
 let proxy = null;
 
 function createServer() {
+  log("main.createServer", "strt", "info");
   try {
-    const port = Defs.port_sentinel_web_client_proxy;
-    server = https
-      .createServer(
-        {
-          key: fs.readFileSync(__dirname + "/certificate/server.key"),
-          cert: fs.readFileSync(__dirname + "/certificate/server.cert")
-        },
-        app
-      )
-      .listen(port, () => {
-        log(`Listening on port ${port}...`, "strt");
-      });
+    const port = 23167; //Defs.port_sentinel_web_client_proxy;
+    server = app.listen(port, async () => {
+      log(`Listening on port ${port}...`, "main", "info");
+    });
   } catch (ex) {
-    log("(Exception) main: " + ex, "strt", "info");
+    log("(Exception) main.createServer: " + ex, "strt", "error");
     return false;
   }
   return true;
@@ -62,6 +55,8 @@ async function main() {
   logLevel = configFile.get("logLevel");
   if (logLevel) setLogLevel(logLevel);
 
+  await sleep(1000);
+
   /*
   const { stdout, stderr } = await spawnAsync("os-id", []);
   if (stderr)
@@ -73,10 +68,16 @@ async function main() {
   }
   */
   configFile.watch(configWatchCallback);
+
+  await sleep(1000);
   
   createServer();
 
-  proxy - new Proxy();
+  
+  await sleep(1000);
+
+  proxy = new Proxy(configFile);
+  await sleep(1000);
   proxy.run();
 }
 
@@ -86,6 +87,9 @@ main();
 
 function configWatchCallback() {
   log("configWatchCallback", "main", "info");
+
+  // TODO.
+  return;
 
   // handle server address change.
   const serverAddress_ = configFile.get("serverAddress");

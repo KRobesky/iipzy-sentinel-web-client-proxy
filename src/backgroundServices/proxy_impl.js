@@ -4,19 +4,27 @@ const { log } = require("iipzy-shared/src/utils/logFile");
 const { sleep } = require("iipzy-shared/src/utils/utils");
 
 class Proxy {
-  constructor() {
+  constructor(configFile) {
     log("Proxy.constructor", "prxy", "info");
 
+    this.configFile = configFile;
     this.clientToken = null;
   }
 
   async run() {
-    this.proxyDown();
-    this.proxyUp();
+    log("Proxy.run", "prxy", "info");
 
-    while (true) {
-      if (this.checkClientToken()) break;
-      await sleep(5*1000);
+      try {
+      await this.checkClientToken();
+      this.proxyDown();
+      this.proxyUp();
+
+      while (!this.clientToken) {
+        await sleep(5*1000);
+        await this.checkClientToken();
+      }
+    } catch (ex) {
+      log("(Exception) Proxy.run: " + ex, "prxy", "error");
     }
 
     //?? TODO: handle client token change.
@@ -24,9 +32,9 @@ class Proxy {
 
   async checkClientToken() {
     if (!this.clientToken) {
-      this.clientToken = configFile.get("clientToken");
+      this.clientToken = this.configFile.get("clientToken");
       if (this.clientToken) {
-        http.setClientTokenHeader(clientToken);
+        http.setClientTokenHeader(this.clientToken);
         return true;
       }
       // no client token yet.
@@ -40,10 +48,11 @@ class Proxy {
       try {
         log("Proxy.proxyDown", "prxy", "info");
         const { data, status } = await http.post("/proxy_down", {});
-         log("Proxy.proxyDown: AFTER posting: status = " + status + ", response = " + JSON.stringify(data), "prxy", "info");
-         await sleep(5*1000);
+        //const { data, status } = await http.get("/proxy_down");
+        log("Proxy.proxyDown: AFTER posting: status = " + status + ", response = " + JSON.stringify(data), "prxy", "info");
+        await sleep(5*1000);
       } catch (ex) {
-          log("(Exception) Proxy.proxyDown: " + ex, "prxy", "error");
+        log("(Exception) Proxy.proxyDown: " + ex, "prxy", "error");
       }
     }
    }
@@ -54,8 +63,9 @@ class Proxy {
       try {
         log("Proxy.proxyUp", "prxy", "info");
         const { data, status } = await http.post("/proxy_up", {});
-         log("Proxy.proxyUp: AFTER posting: status = " + status + ", response = " + JSON.stringify(data), "prxy", "info");
-         await sleep(5*1000);
+        //const { data, status } = await http.get("/proxy_up");
+        log("Proxy.proxyUp: AFTER posting: status = " + status + ", response = " + JSON.stringify(data), "prxy", "info");
+        await sleep(5*1000);
       } catch (ex) {
         log("(Exception) Proxy.proxyUp: " + ex, "prxy", "error");
       }

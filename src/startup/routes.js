@@ -18,6 +18,6 @@ module.exports = function(app) {
     next();
   });
   app.use(express.json());
-  app.use("/proxy", updater);
+  app.use("/proxy", reqHandler);
   app.use(error);
 };

@@ -5,7 +5,7 @@ START=99
 USE_PROCD=1
 
 SERVICE_NAME="iipzy-updater-b"
-SERVICE_COMMAND="/usr/bin/node /home/pi/iipzy-sentinel-web-client-proxy-b/iipzy-updater/src/index.js"
+SERVICE_COMMAND="/usr/bin/node /home/pi/iipzy-sentinel-web-client-proxy-b/iipzy-sentinel-web-client-proxy/src/index.js"
 
 service_pidfile="/var/run/$SERVICE_NAME.pid"
 
