@@ -1,146 +1,152 @@
-// import React from "react";
-// import ReactDOM from "react-dom";
-// import "./index.css";
-// import App from "./App";
-// import * as serviceWorker from "./serviceWorker";
+const express = require("express");
+const app = express();
+const http_ = require("http");
+const fs = require("fs");
 
-// //const Defs = require("iipzy-shared/src/defs");
-// // const { log, logInit, setLogLevel } = require("iipzy-shared/src/utils/logFile");
-// // const userDataPath = "/etc/iipzy";
-// // const logPath = process.platform === "win32" ? "c:/temp/" : "/var/log/iipzy";
-// // logInit(logPath, "iipzy-client-web");
+const Defs = require("iipzy-shared/src/defs");
+const { log, logInit, setLogLevel } = require("iipzy-shared/src/utils/logFile");
+const logPath = "/var/log/iipzy";
+logInit(logPath, "iipzy-sentinel-web-client-proxy");
+const http = require("iipzy-shared/src/services/httpService");
+const { ConfigFile } = require("iipzy-shared/src/utils/configFile");
+//const { set_os_id } = require("iipzy-shared/src/utils/globals");
+//const { spawnAsync } = require("iipzy-shared/src/utils/spawnAsync");
+const { processErrorHandler, sleep } = require("iipzy-shared/src/utils/utils");
 
-// // log("iipzy-client-web starting", "main", "info");
+const Proxy = require("./backgroundServices/proxy");
 
-// ReactDOM.render(<App />, document.getElementById("root"));
+require("./startup/routes")(app);
 
-// // If you want your app to work offline and load faster, you can change
-// // unregister() to register() below. Note this comes with some pitfalls.
-// // Learn more about service workers: https://bit.ly/CRA-PWA
-// serviceWorker.unregister();
-import React from "react";
-import ReactDOM from "react-dom";
-import { BrowserRouter } from "react-router-dom";
-import "bootstrap/dist/css/bootstrap.css";
+const userDataPath = "/etc/iipzy";
+let configFile = null;
 
-import "./index.css";
-import App from "./App";
-import * as serviceWorker from "./serviceWorker";
-// import "bootstrap/dist/css/bootstrap.css";
-// import "font-awesome/css/font-awesome.css";
+let serverAddress = undefined;
+let clientToken = undefined;
+let logLevel = undefined;
 
-import Defs from "iipzy-shared/src/defs";
+let server = null;
 
-import cipher from "./utils/cipher";
-import cookie from "./utils/cookie";
-import sentinelInfo from "./utils/sentinelInfo";
-import localIPAddress from "./utils/localIPAddress";
+let proxy = null;
 
-import FromSentinel from "./ipc/fromSentinel";
-import toSentinel from "./ipc/toSentinel";
-import auth from "./services/auth";
-import credentials from "./services/credentials";
-import devices from "./services/devices";
-import settings from "./services/settings";
-
-import eventManager from "./ipc/eventManager";
-
-console.log("window--------");
-console.log(window);
-
-const sentinelIPAddress =
-  window.location.hostname === "localhost"
-    ? "192.168.1.145:8002"
-    : window.location.hostname + ":8002";
-console.log("sentinelIPAddress = " + sentinelIPAddress);
-
-localIPAddress.getLocalSubnet();
-
-/*
-  Handling credentials.
-  From iipzy-server-web (i.e., "params"):
-    Put userName, password into cookies.
-    Send creds to sentinel.
-
-  From direct call (e.g., http://192.168.1.56:8008):
-    if no cookie, 
-      show LoginWindow (other windows are blocked).
-      on login:
-        Put userName, password into cookies.
-        Send creds to sentinel.
-        No escape on fail.
-
-  Sentinel
-    if no or bad credentials, set needLogin in event return.
-    iipzy-sentinel-web does "no-cookie" dance (above).
-
-*/
-
-let sendCredentials = false;
-const paramsURI = getQueryVariable("params");
-if (paramsURI) {
-  const paramsEncrypted = decodeURI(paramsURI);
-  if (paramsEncrypted) {
-    const params = JSON.parse(cipher.decrypt(paramsEncrypted));
-    const { userName, password, from } = params;
-
-    console.log("userName = " + userName);
-    console.log("passwordEncrypted = " + password);
-    console.log("from = " + from);
-
-    if (userName) cookie.set("userName", userName);
-    if (password) cookie.set("password", password);
-    if (from) cookie.set("fromOrigin", from);
-    sendCredentials = true;
+function createServer() {
+  try {
+    const port = Defs.port_sentinel_web_client_proxy;
+    server = https
+      .createServer(
+        {
+          key: fs.readFileSync(__dirname + "/certificate/server.key"),
+          cert: fs.readFileSync(__dirname + "/certificate/server.cert")
+        },
+        app
+      )
+      .listen(port, () => {
+        log(`Listening on port ${port}...`, "strt");
+      });
+  } catch (ex) {
+    log("(Exception) main: " + ex, "strt", "info");
+    return false;
   }
+  return true;
 }
 
-auth.init(sentinelIPAddress);
-credentials.init(sentinelIPAddress);
-devices.init(sentinelIPAddress);
-sentinelInfo.init(sentinelIPAddress);
-settings.init(sentinelIPAddress);
-toSentinel.init(sentinelIPAddress);
+async function main() {
+  configFile = new ConfigFile(userDataPath, Defs.configFilename);
+  await configFile.init();
 
-const fromSentinel = new FromSentinel(sentinelIPAddress);
-fromSentinel.run();
+  serverAddress = configFile.get("serverAddress");
+  //?? TODO http.setBaseURL(serverAddress);
+  http.setBaseURL("iipzy.net:8002");
 
-ReactDOM.render(
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>,
-  document.getElementById("root")
-);
+  clientToken = configFile.get("clientToken");
 
-if (sendCredentials) credentials.send();
+  logLevel = configFile.get("logLevel");
+  if (logLevel) setLogLevel(logLevel);
 
-//if (true) eventManager.send(Defs.ipcLinkTo, Defs.urlLogin);
+  /*
+  const { stdout, stderr } = await spawnAsync("os-id", []);
+  if (stderr)
+      log("(Error) os-id: stderr = " + stderr, "preq", "error");
+  else
+  {
+    log("main: os_id = " + stdout, "preq", "info");
+    set_os_id(stdout);
+  }
+  */
+  configFile.watch(configWatchCallback);
+  
+  createServer();
 
-// If you want your app to work offline and load faster, you can change
-// unregister() to register() below. Note this comes with some pitfalls.
-// Learn more about service workers: http://bit.ly/CRA-PWA
-serviceWorker.unregister();
+  proxy - new Proxy();
+  proxy.run();
+}
 
-// from: https://stackoverflow.com/questions/35352638/react-how-to-get-parameter-value-from-query-string
-function getQueryVariable(variable) {
-  const query = window.location.search.substring(1);
-  console.log(query);
-  const vars = query.split("&");
-  console.log(vars);
-  for (let i = 0; i < vars.length; i++) {
-    var pair = vars[i].split("=");
-    console.log(pair);
-    if (pair[0] === variable) {
-      return pair[1];
+processErrorHandler();
+
+main();
+
+function configWatchCallback() {
+  log("configWatchCallback", "main", "info");
+
+  // handle server address change.
+  const serverAddress_ = configFile.get("serverAddress");
+  if (serverAddress_ !== serverAddress) {
+    log(
+      "configWatchCallback: serverAddress change: old = " +
+        serverAddress +
+        ", new = " +
+        serverAddress_,
+      "main",
+      "info"
+    );
+
+    if (serverAddress_) {
+      serverAddress = serverAddress_;
+      http.setBaseURL(serverAddress);
     }
   }
-  return null;
+
+  clientToken_ = configFile.get("clientToken");
+  if (clientToken_ !== clientToken) {
+    log(
+      "configWatchCallback: clientToken change: old = " +
+        clientToken +
+        ", new = " +
+        clientToken_,
+      "main",
+      "info"
+    );
+
+    if (clientToken_) {
+      clientToken = clientToken_;
+      http.setClientTokenHeader(clientToken);
+    }
+  }
+
+  // handle log level change.
+  const logLevel_ = configFile.get("logLevel");
+  if (logLevel_ !== logLevel) {
+    log(
+      "configWatchCallback: logLevel change: old = " +
+        logLevel +
+        ", new = " +
+        logLevel_,
+      "main",
+      "info"
+    );
+  }
+  if (logLevel_) {
+    // tell log.
+    logLevel = logLevel_;
+    setLogLevel(logLevel);
+  }
 }
 
-const handleLoginVerifyStatus = async (event, data) => {
-  const { verifyStatus } = data;
-  console.log("main.handleLoginVerifyStatus: verifyStatus = " + verifyStatus);
-  if (verifyStatus === Defs.loginStatusVerified) await credentials.send();
-};
+// process.on("uncaughtException", function(err) {
+//   log("(Exception) uncaught exception: " + err, "strt", "error");
+//   log("stopping in 2 seconds", "strt", "info");
+//   setTimeout(() => {
+//     process.exit(1);
+//   }, 2 * 1000);
+// });
 
-eventManager.on(Defs.ipcLoginVerifyStatus, handleLoginVerifyStatus);
+module.exports = server;

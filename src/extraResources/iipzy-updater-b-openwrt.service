@@ -4,8 +4,8 @@ START=99
 
 USE_PROCD=1
 
-SERVICE_NAME="iipzy-sentinel-web-a"
-SERVICE_COMMAND="/usr/bin/node /usr/bin/serve -s /home/pi/iipzy-sentinel-web-a/iipzy-sentinel-web/build -l 8008"
+SERVICE_NAME="iipzy-updater-b"
+SERVICE_COMMAND="/usr/bin/node /home/pi/iipzy-sentinel-web-client-proxy-b/iipzy-updater/src/index.js"
 
 service_pidfile="/var/run/$SERVICE_NAME.pid"
 
