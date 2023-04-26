@@ -3,6 +3,8 @@ const http = require("iipzy-shared/src/services/httpService");
 const { log } = require("iipzy-shared/src/utils/logFile");
 const { sleep } = require("iipzy-shared/src/utils/utils");
 
+const { handleDownRequest } = require("./handleProxyIO");
+
 class Proxy {
   constructor(configFile) {
     log("Proxy.constructor", "prxy", "info");
@@ -42,20 +44,35 @@ class Proxy {
     }
   }
 
+  //?? TODO - heartbeat - so that server side can detect if client goes off line.
+
   // requests from server proxy.
   async proxyDown() {
+    let response = {};
+    //let count = 0;
     while (true) {
       try {
         log("Proxy.proxyDown", "prxy", "info");
-        const { data, status } = await http.post("/proxy_down", {});
+        const { data : data_req, status } = await http.post("/proxy_down", {data: response});
         //const { data, status } = await http.get("/proxy_down");
-        log("Proxy.proxyDown: AFTER posting: status = " + status + ", response = " + JSON.stringify(data), "prxy", "info");
-        await sleep(5*1000);
+        log("Proxy.proxyDown: AFTER posting: status = " + status + ", response = " + JSON.stringify(data_req), "prxy", "info");
+
+        try {
+          log("Proxy.proxyDown: BEFORE handleDownRequest", "prxy", "info");
+          const { data: data_rsp, status } = await handleDownRequest(data_req);
+          log("Proxy.proxyDown: AFTER handleDownRequest" + JSON.stringify(data_rsp, null, 2), "prxy", "info");
+          response = data_rsp;
+        } catch (ex) {
+          log("(Exception) Proxy.proxyDown: AFTER handleDownRequest" + ex, "prxy", "error");
+        }
+        // simulate sending request to sentinel.
+        //count++;
+        //response = { count, data: "from sentinel"};
       } catch (ex) {
         log("(Exception) Proxy.proxyDown: " + ex, "prxy", "error");
       }
     }
-   }
+  }
 
   // events/updates to server proxy.
   async proxyUp() {
