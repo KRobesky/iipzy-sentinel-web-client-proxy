@@ -17,14 +17,14 @@ class Proxy {
     log("Proxy.run", "prxy", "info");
 
       try {
-      await this.checkClientToken();
-      this.proxyDown();
-      this.proxyUp();
-
-      while (!this.clientToken) {
-        await sleep(5*1000);
         await this.checkClientToken();
-      }
+        this.proxyDown();
+        this.proxyUp();
+
+        while (!this.clientToken) {
+          await sleep(5*1000);
+          await this.checkClientToken();
+        }
     } catch (ex) {
       log("(Exception) Proxy.run: " + ex, "prxy", "error");
     }
@@ -49,19 +49,19 @@ class Proxy {
   // requests from server proxy.
   async proxyDown() {
     let response = {};
-    //let count = 0;
+    let count_rsp = 0;
     while (true) {
       try {
-        log("Proxy.proxyDown", "prxy", "info");
-        const { data : data_req, status } = await http.post("/proxy_down", {data: response});
-        //const { data, status } = await http.get("/proxy_down");
-        log("Proxy.proxyDown: AFTER posting: status = " + status + ", response = " + JSON.stringify(data_req), "prxy", "info");
+        log("Proxy.proxyDown - BEFORE posting: count_rsp = " + count_rsp, "prxy", "info");
+        const { data : data_req, status } = await http.post("/proxy_down", {data: response, count: count_rsp});
+        log("Proxy.proxyDown - AFTER posting: count_req = " + data_req.count + ", status = " + status + ", response = " + JSON.stringify(data_req), "prxy", "info");
 
         try {
           log("Proxy.proxyDown: BEFORE handleDownRequest", "prxy", "info");
-          const { data: data_rsp, status } = await handleDownRequest(data_req);
+           const { data: data_rsp, status } = await handleDownRequest(data_req);
           log("Proxy.proxyDown: AFTER handleDownRequest" + JSON.stringify(data_rsp, null, 2), "prxy", "info");
           response = data_rsp;
+          count_rsp = data_req.count;
         } catch (ex) {
           log("(Exception) Proxy.proxyDown: AFTER handleDownRequest" + ex, "prxy", "error");
         }
