@@ -3,7 +3,7 @@ const http = require("iipzy-shared/src/services/httpService");
 const { log } = require("iipzy-shared/src/utils/logFile");
 const { sleep } = require("iipzy-shared/src/utils/utils");
 
-const { handleDownRequest } = require("./handleProxyIO");
+const { handleRequest } = require("./handleProxyIO");
 
 class Proxy {
   constructor(configFile) {
@@ -58,7 +58,7 @@ class Proxy {
 
         try {
           log("Proxy.proxyRequest[" + data_req.count + "]: BEFORE handleDownRequest", "prxy", "info");
-           const { data: data_rsp, status } = await handleDownRequest(data_req);
+          const { data: data_rsp, status } = await handleRequest(data_req);
           log("Proxy.proxyRequest[" + data_req.count + "]: AFTER handleDownRequest" + JSON.stringify(data_rsp, null, 2), "prxy", "info");
           response = data_rsp;
           count_rsp = data_req.count;

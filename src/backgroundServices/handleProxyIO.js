@@ -6,7 +6,7 @@ const http = require("../ipc/httpService");
 //http.setBaseURL("localhost:8002");
 const sentinelIPAddress = "localhost:8002";
 
-async function handleDownRequest(request) {
+async function handleRequest(request) {
   try {
     log("handleDownRequest: " + JSON.stringify(request, null, 2), "prxy", "info");
     /*
@@ -27,28 +27,27 @@ async function handleDownRequest(request) {
     switch (request.method) {
       case "DELETE" : {
         return await http.delete("http://" + sentinelIPAddress + request.originalUrl, {});
-        break;
       }
       case "GET" : {
         return await http.get("http://" + sentinelIPAddress + request.originalUrl, {});
-        break;
       }
       case "POST" : {
         return await http.post("http://" + sentinelIPAddress + request.originalUrl, request.body);
-        break;
       }
       case "PUT" : {
         return await http.put("http://" + sentinelIPAddress + request.originalUrl, request.body);
-        break;
+      }
+      case "NOOP" : {
+        return { data: {}, status: {} };
       }
       default: {
-
+        break;
       }
     }
   } catch (ex) {
-    log("(Exception) handleDownRequest: " + ex, "prxy", "error");
+    log("(Exception) handleRequest: " + ex, "prxy", "error");
   }
 }
 
-module.exports = { handleDownRequest };
+module.exports = { handleRequest };
 
