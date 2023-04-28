@@ -70,6 +70,7 @@ class Proxy {
         //response = { count, data: "from sentinel"};
       } catch (ex) {
         log("(Exception) Proxy.proxyRequest: " + ex, "prxy", "error");
+        await sleep(5*1000);
       }
     }
   }
