@@ -18,8 +18,8 @@ class Proxy {
 
       try {
         await this.checkClientToken();
-        this.proxyDown();
-        this.proxyUp();
+        this.proxyRequest();
+        //this.proxyControl();
 
         while (!this.clientToken) {
           await sleep(5*1000);
@@ -47,44 +47,44 @@ class Proxy {
   //?? TODO - heartbeat - so that server side can detect if client goes off line.
 
   // requests from server proxy.
-  async proxyDown() {
+  async proxyRequest() {
     let response = {};
     let count_rsp = 0;
     while (true) {
       try {
-        log("Proxy.proxyDown - BEFORE posting: count_rsp = " + count_rsp, "prxy", "info");
-        const { data : data_req, status } = await http.post("/proxy_down", {data: response, count: count_rsp});
-        log("Proxy.proxyDown - AFTER posting: count_req = " + data_req.count + ", status = " + status + ", response = " + JSON.stringify(data_req), "prxy", "info");
+        log("Proxy.proxyRequest[" + count_rsp + "] - BEFORE posting", "prxy", "info");
+        const { data : data_req, status } = await http.post("/proxy_req", {data: response, count: count_rsp});
+        log("Proxy.proxyRequest[" + data_req.count + "] - AFTER posting: status = " + status + ", response = " + JSON.stringify(data_req), "prxy", "info");
 
         try {
-          log("Proxy.proxyDown: BEFORE handleDownRequest", "prxy", "info");
+          log("Proxy.proxyRequest[" + data_req.count + "]: BEFORE handleDownRequest", "prxy", "info");
            const { data: data_rsp, status } = await handleDownRequest(data_req);
-          log("Proxy.proxyDown: AFTER handleDownRequest" + JSON.stringify(data_rsp, null, 2), "prxy", "info");
+          log("Proxy.proxyRequest[" + data_req.count + "]: AFTER handleDownRequest" + JSON.stringify(data_rsp, null, 2), "prxy", "info");
           response = data_rsp;
           count_rsp = data_req.count;
         } catch (ex) {
-          log("(Exception) Proxy.proxyDown: AFTER handleDownRequest" + ex, "prxy", "error");
+          log("(Exception) Proxy.proxyRequest: AFTER handleDownRequest" + ex, "prxy", "error");
         }
         // simulate sending request to sentinel.
         //count++;
         //response = { count, data: "from sentinel"};
       } catch (ex) {
-        log("(Exception) Proxy.proxyDown: " + ex, "prxy", "error");
+        log("(Exception) Proxy.proxyRequest: " + ex, "prxy", "error");
       }
     }
   }
 
-  // events/updates to server proxy.
-  async proxyUp() {
+  // keep-alive to server proxy.
+  async proxyControl() {
     while (true) {
       try {
-        log("Proxy.proxyUp", "prxy", "info");
-        const { data, status } = await http.post("/proxy_up", {});
+        log("Proxy.proxyControl", "prxy", "info");
+        const { data, status } = await http.post("/proxy_ctl", {});
         //const { data, status } = await http.get("/proxy_up");
-        log("Proxy.proxyUp: AFTER posting: status = " + status + ", response = " + JSON.stringify(data), "prxy", "info");
+        log("Proxy.proxyControl: AFTER posting: status = " + status + ", response = " + JSON.stringify(data), "prxy", "info");
         await sleep(5*1000);
       } catch (ex) {
-        log("(Exception) Proxy.proxyUp: " + ex, "prxy", "error");
+        log("(Exception) Proxy.proxyControl: " + ex, "prxy", "error");
       }
     }
   }
