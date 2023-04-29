@@ -11,6 +11,8 @@ class Proxy {
 
     this.configFile = configFile;
     this.clientToken = null;
+
+    this.CHUNK_SIZE = 4096;
   }
 
   async run() {
@@ -46,6 +48,20 @@ class Proxy {
 
   //?? TODO - heartbeat - so that server side can detect if client goes off line.
 
+  // NB: assumes request is an object.
+  async post_chunks(request) {
+    const s = JSON.stringify(request);
+    let response = null;
+    for (let i = 0; i < s.length; i +=  this.CHUNK_SIZE) {
+      const chunk = s.slice(i, i +  this.CHUNK_SIZE); 
+      const last_chunk = (i + this.CHUNK_SIZE) >= s.length;
+      response = await http.post("/proxy_req", {chunk, last_chunk});
+      //log("eventWait: writing chunk: length = " + chunk.length, "ewat", "info");
+      //log("eventWait: writing chunk: chunk  = '" + chunk + "'", "ewat", "info");
+    }
+    return response;
+  }
+
   // requests from server proxy.
   async proxyRequest() {
     let response = {};
@@ -53,24 +69,33 @@ class Proxy {
     while (true) {
       try {
         log("Proxy.proxyRequest[" + count_rsp + "] - BEFORE posting", "prxy", "info");
-        const { data : data_req, status } = await http.post("/proxy_req", {data: response, count: count_rsp});
+        //const { data : data_req, status } = await http.post("/proxy_req", {data: response, count: count_rsp});
+        const { data : data_req, status } = await this.post_chunks({data: response, count: count_rsp});
         log("Proxy.proxyRequest[" + data_req.count + "] - AFTER posting: status = " + status + ", response = " + JSON.stringify(data_req), "prxy", "info");
 
         try {
           log("Proxy.proxyRequest[" + data_req.count + "]: BEFORE handleDownRequest", "prxy", "info");
-          const { data: data_rsp, status } = await handleRequest(data_req);
-          log("Proxy.proxyRequest[" + data_req.count + "]: AFTER handleDownRequest" + JSON.stringify(data_rsp, null, 2), "prxy", "info");
+          const { data: data_rsp } = await handleRequest(data_req);
           response = data_rsp;
+
+          log("Proxy.proxyRequest[" + data_req.count + "]: AFTER handleDownRequest: " + JSON.stringify(response, null, 2), "prxy", "info");
+          //response = data_rsp;
           count_rsp = data_req.count;
         } catch (ex) {
-          log("(Exception) Proxy.proxyRequest: AFTER handleDownRequest" + ex, "prxy", "error");
+          log("(Exception) Proxy.proxyRequest.1: AFTER handleDownRequest" + ex, "prxy", "error");
+          log("(Exception) Proxy.proxyRequest.1: AFTER handleDownRequest - response length = " + JSON.stringify(response).length, "prxy", "error");
+          await sleep(5*1000);
+          response = { __hadError__: { errorMessage: ex } };
         }
         // simulate sending request to sentinel.
         //count++;
         //response = { count, data: "from sentinel"};
       } catch (ex) {
-        log("(Exception) Proxy.proxyRequest: " + ex, "prxy", "error");
+
+        log("(Exception) Proxy.proxyRequest.2: " + ex, "prxy", "error");
+        log("(Exception) Proxy.proxyRequest.2: response length = " + JSON.stringify(response).length, "prxy", "error");
         await sleep(5*1000);
+        response = { __hadError__: { errorMessage: ex } };
       }
     }
   }
