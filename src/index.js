@@ -48,35 +48,25 @@ async function main() {
 
   serverAddress = configFile.get("serverAddress");
   //?? TODO http.setBaseURL(serverAddress);
+  //?? TODO serverAddress should not have port number.
   http.setBaseURL("iipzy.net:8002");
-
-  clientToken = configFile.get("clientToken");
 
   logLevel = configFile.get("logLevel");
   if (logLevel) setLogLevel(logLevel);
 
-  await sleep(1000);
-
-  /*
-  const { stdout, stderr } = await spawnAsync("os-id", []);
-  if (stderr)
-      log("(Error) os-id: stderr = " + stderr, "preq", "error");
-  else
-  {
-    log("main: os_id = " + stdout, "preq", "info");
-    set_os_id(stdout);
+  // no proxy without a client token
+  let clientToken = null;
+  while (true) {
+    clientToken = configFile.get("clientToken");
+    if (clientToken) break;
+    await sleep(5*1000);
   }
-  */
-  configFile.watch(configWatchCallback);
 
-  await sleep(1000);
+  configFile.watch(configWatchCallback);
   
   createServer();
 
-  
-  await sleep(1000);
-
-  proxy = new Proxy(configFile);
+  proxy = new Proxy(clientToken);
   await sleep(1000);
   proxy.run();
 }
@@ -87,44 +77,6 @@ main();
 
 function configWatchCallback() {
   log("configWatchCallback", "main", "info");
-
-  // TODO.
-  return;
-
-  // handle server address change.
-  const serverAddress_ = configFile.get("serverAddress");
-  if (serverAddress_ !== serverAddress) {
-    log(
-      "configWatchCallback: serverAddress change: old = " +
-        serverAddress +
-        ", new = " +
-        serverAddress_,
-      "main",
-      "info"
-    );
-
-    if (serverAddress_) {
-      serverAddress = serverAddress_;
-      http.setBaseURL(serverAddress);
-    }
-  }
-
-  clientToken_ = configFile.get("clientToken");
-  if (clientToken_ !== clientToken) {
-    log(
-      "configWatchCallback: clientToken change: old = " +
-        clientToken +
-        ", new = " +
-        clientToken_,
-      "main",
-      "info"
-    );
-
-    if (clientToken_) {
-      clientToken = clientToken_;
-      http.setClientTokenHeader(clientToken);
-    }
-  }
 
   // handle log level change.
   const logLevel_ = configFile.get("logLevel");
