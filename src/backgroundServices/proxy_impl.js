@@ -6,10 +6,11 @@ const { sleep } = require("iipzy-shared/src/utils/utils");
 const { handleRequest } = require("./handleProxyIO");
 
 class Proxy {
-  constructor(clientToken) {
+  //constructor(clientToken) {
+  constructor() {
     log("Proxy.constructor", "prxy", "info");
 
-    this.clientToken = clientToken;
+    //this.clientToken = clientToken;
 
     this.CHUNK_SIZE = 4096;
   }
@@ -18,13 +19,11 @@ class Proxy {
     log("Proxy.run", "prxy", "info");
 
       try {
-        http.setClientTokenHeader(this.clientToken);
+        //http.setClientTokenHeader(this.clientToken);
         this.proxyRequest();
     } catch (ex) {
       log("(Exception) Proxy.run: " + ex, "prxy", "error");
     }
-
-    //?? TODO: handle client token change.
   }
 
   // NB: assumes request is an object.

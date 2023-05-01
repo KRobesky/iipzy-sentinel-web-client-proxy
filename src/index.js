@@ -20,8 +20,6 @@ require("./startup/routes")(app);
 const userDataPath = "/etc/iipzy";
 let configFile = null;
 
-let serverAddress = undefined;
-let clientToken = undefined;
 let logLevel = undefined;
 
 let server = null;
@@ -31,9 +29,8 @@ let proxy = null;
 function createServer() {
   log("main.createServer", "strt", "info");
   try {
-    const port = 23167; //Defs.port_sentinel_web_client_proxy;
-    server = app.listen(port, async () => {
-      log(`Listening on port ${port}...`, "main", "info");
+    server = app.listen(Defs.port_sentinel_web_client_proxy, async () => {
+      log(`Listening on port ${Defs.port_sentinel_web_client_proxy}...`, "main", "info");
     });
   } catch (ex) {
     log("(Exception) main.createServer: " + ex, "strt", "error");
@@ -45,22 +42,21 @@ function createServer() {
 async function main() {
   configFile = new ConfigFile(userDataPath, Defs.configFilename);
   await configFile.init();
-
-  serverAddress = configFile.get("serverAddress");
-  //?? TODO http.setBaseURL(serverAddress);
-  //?? TODO serverAddress should not have port number.
-  http.setBaseURL(serverAddress + ":" + Defs.port_sentinel_core);
-
+  
   logLevel = configFile.get("logLevel");
   if (logLevel) setLogLevel(logLevel);
 
-  // no proxy without a client token
-  let clientToken = null;
+  // wait forever to get a client token.
   while (true) {
-    clientToken = configFile.get("clientToken");
-    if (clientToken) break;
-    await sleep(5*1000);
+    const clientToken = configFile.get("clientToken");
+    if (clientToken) {
+      http.setClientTokenHeader(clientToken);
+      break;
+    }
+    await sleep(1000);
   }
+
+  http.setBaseURL(configFile.get("serverAddress") + ":" + Defs.port_server);
 
   configFile.watch(configWatchCallback);
   
