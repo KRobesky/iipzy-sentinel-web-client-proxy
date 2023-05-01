@@ -20,6 +20,8 @@ require("./startup/routes")(app);
 const userDataPath = "/etc/iipzy";
 let configFile = null;
 
+let clientToken = null;
+
 let logLevel = undefined;
 
 let server = null;
@@ -48,22 +50,23 @@ async function main() {
 
   // wait forever to get a client token.
   while (true) {
-    const clientToken = configFile.get("clientToken");
+    clientToken = configFile.get("clientToken");
     if (clientToken) {
       http.setClientTokenHeader(clientToken);
       break;
     }
-    await sleep(1000);
+    await sleep(5*1000);
   }
 
-  http.setBaseURL(configFile.get("serverAddress") + ":" + Defs.port_server);
+  http.setBaseURL(configFile.get("serverAddress") + ":" + Defs.port_sentinel_web_server_proxy);
 
   configFile.watch(configWatchCallback);
   
   createServer();
 
-  proxy = new Proxy(clientToken);
   await sleep(1000);
+
+  proxy = new Proxy(clientToken);
   proxy.run();
 }
 
