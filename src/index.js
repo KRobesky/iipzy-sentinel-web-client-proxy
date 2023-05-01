@@ -49,7 +49,7 @@ async function main() {
   serverAddress = configFile.get("serverAddress");
   //?? TODO http.setBaseURL(serverAddress);
   //?? TODO serverAddress should not have port number.
-  http.setBaseURL("iipzy.net:8002");
+  http.setBaseURL(serverAddress + ":" + Defs.port_sentinel_core);
 
   logLevel = configFile.get("logLevel");
   if (logLevel) setLogLevel(logLevel);
